@@ -33,6 +33,18 @@ AI_Code_Review_Agent/
 ├── README.md
 └── .gitignore
 
+
+AI_Code_Review_Agent/
+│
+├── backend/
+│ ├── knowledge_base/
+│ ├── build_knowledge_base.py
+│ ├── reviewer.py
+│ ├── main.py
+│ └── requirements.txt
+│
+├── README.md
+└── .gitignore
 ---
 
 ## Security Knowledge Base
