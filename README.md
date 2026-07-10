@@ -11,30 +11,27 @@ The system uses AI reasoning and a security knowledge base to assist developers 
 
 ## Features
 
-✅ AI-based code analysis  
-✅ Code quality and style checking  
-✅ Security vulnerability detection  
-✅ OWASP-based secure coding recommendations  
-✅ Knowledge base integration using RAG pipeline  
-✅ Automated improvement suggestions  
+AI-based code analysis  
+Code quality and style checking  
+Security vulnerability detection  
+OWASP-based secure coding recommendations  
+Knowledge base integration using RAG pipeline  
+Automated improvement suggestions  
 
 ---
 ##  Project Structure
 
-
 AI_Code_Review_Agent/
-
 │
 ├── backend/
-│ ├── knowledge_base/
-│ ├── build_knowledge_base.py
-│ ├── reviewer.py
-│ ├── main.py
-│ └── requirements.txt
+│   ├── knowledge_base/
+│   ├── build_knowledge_base.py
+│   ├── reviewer.py
+│   ├── main.py
+│   └── requirements.txt
 │
 ├── README.md
 └── .gitignore
-
 
 ---
 
