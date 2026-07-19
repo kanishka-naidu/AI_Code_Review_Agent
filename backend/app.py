@@ -1,8 +1,8 @@
 from fastapi import FastAPI, UploadFile, File
-from models.request_models import CodeSubmission
+from backend.models.request_models import CodeSubmission
+from backend.routes.analyzer import router as analyzer_router
 
-from knowledge_base.retriever import retrieve_context
-from llm.reviewer import review_code
+
 
 import ast
 import javalang
@@ -10,7 +10,7 @@ import javalang
 
 app = FastAPI()
 
-
+app.include_router(analyzer_router)
 @app.get("/")
 def home():
     return {"message": "Backend is running!"}
