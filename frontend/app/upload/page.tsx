@@ -74,9 +74,9 @@ localStorage.setItem("analysisHistory", JSON.stringify(history));
             originalFinding: item,
         }))
     );
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Cannot connect to backend.");
+      alert(err.message || "Cannot connect to backend.");
     } finally {
       setIsLoading(false);
     }

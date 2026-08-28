@@ -268,7 +268,8 @@ export default function AssistantPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to get response from assistant')
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.detail || 'Failed to get response from assistant')
       }
 
       const data = await response.json()
@@ -296,8 +297,7 @@ export default function AssistantPage() {
       const errorMessage: Message = {
         id: 'msg-' + (Date.now() + 1),
         role: 'assistant',
-        content:
-          "I'm having trouble connecting to the server. Please make sure the backend is running and try again.",
+        content: error instanceof Error ? error.message : "I'm having trouble connecting to the server. Please make sure the backend is running and try again.",
         timestamp: new Date().toISOString(),
       }
 
