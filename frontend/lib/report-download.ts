@@ -9,7 +9,7 @@ export async function downloadReportPDF(report: any): Promise<boolean> {
   }
 
   try {
-    const response = await fetch(`http://127.0.0.1:8000/report/${report.report_id}/pdf`)
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/report/${report.report_id}/pdf`)
 
     if (!response.ok) {
       throw new Error('Failed to generate PDF')

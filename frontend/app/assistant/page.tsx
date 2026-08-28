@@ -254,7 +254,7 @@ export default function AssistantPage() {
       // Use the conversation's backend conversation_id if we have one
       const activeConv = conversations.find((c) => c.id === activeConversationId)
 
-      const response = await fetch('http://127.0.0.1:8000/assistant', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/assistant`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
