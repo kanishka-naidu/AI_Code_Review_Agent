@@ -66,6 +66,9 @@ async def analyze_code(
     except RuntimeError as exc:
         logger.error("Pipeline error: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("Unexpected error during analysis: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     return AnalysisResponse(report=report)
 
@@ -80,32 +83,38 @@ def _build_upload_submission(request: AnalyzeRequest, upload_service: UploadServ
 
     The language is derived from the stored filename; request.language overrides.
     """
-    upload_path = upload_service.settings.upload_path
-    pattern = f"{request.source_id}_*"
-    matches = list(upload_path.glob(pattern))
+    try:
+        upload_path = upload_service.settings.upload_path
+        pattern = f"{request.source_id}_*"
+        matches = list(upload_path.glob(pattern))
 
-    if not matches:
-        detail = get_repository_config().load("reporting.json").get("source_not_found_message")
-        raise HTTPException(status_code=404, detail=str(detail).format(source_id=request.source_id))
+        if not matches:
+            detail = get_repository_config().load("reporting.json").get("source_not_found_message")
+            raise HTTPException(status_code=404, detail=str(detail).format(source_id=request.source_id))
 
-    source_file = matches[0]
-    code = source_file.read_text(encoding="utf-8")
-    # Strip the UUID prefix to recover the original filename
-    filename = source_file.name.split("_", 1)[1] if "_" in source_file.name else source_file.name
+        source_file = matches[0]
+        code = source_file.read_text(encoding="utf-8")
+        # Strip the UUID prefix to recover the original filename
+        filename = source_file.name.split("_", 1)[1] if "_" in source_file.name else source_file.name
 
-    # Language: explicit request.language > auto-detect from filename/content
-    language = request.language or _language_agent.detect(filename, code)
+        # Language: explicit request.language > auto-detect from filename/content
+        language = request.language or _language_agent.detect(filename, code)
 
-    return CodeSubmission(
-        language=language,
-        code=code,
-        filename=filename,
-        source_id=request.source_id,
-        metadata={
-            "source_type": get_repository_config().load("reporting.json").get("source_type_upload"),
-            "include_rag": request.include_rag,
-        },
-    )
+        return CodeSubmission(
+            language=language,
+            code=code,
+            filename=filename,
+            source_id=request.source_id,
+            metadata={
+                "source_type": get_repository_config().load("reporting.json").get("source_type_upload"),
+                "include_rag": request.include_rag,
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Error building upload submission: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 def _build_paste_submission(request: AnalyzeRequest) -> CodeSubmission:
