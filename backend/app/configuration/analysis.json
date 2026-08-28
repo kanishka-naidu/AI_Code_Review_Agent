@@ -1,0 +1,29 @@
+{
+  "default_category": "other",
+  "quality_category": "quality",
+  "security_category": "security",
+  "default_severity": "medium",
+  "info_severity": "info",
+  "syntax_error_rule": "syntax-error",
+  "tool_exit_codes": {
+    "default": [0, 1],
+    "pmd": [0, 1, 4]
+  },
+  "language_extensions": {
+    ".py": "python",
+    ".java": "java",
+    ".txt": "text",
+    ".md": "markdown"
+  },
+  "language_content_hints": [
+    {"hint": "public class ", "language": "java"},
+    {"hint": "public static void main", "language": "java"},
+    {"hint": "import java.", "language": "java"},
+    {"hint": "def ", "language": "python"},
+    {"hint": "import ", "language": "python"},
+    {"hint": "print(", "language": "python"}
+  ],
+  "fallback_language": "text",
+  "python_default_filename": "submitted.py",
+  "java_default_filename": "submitted.java"
+}

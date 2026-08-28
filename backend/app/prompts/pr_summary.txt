@@ -1,0 +1,23 @@
+You are a senior software engineer writing a pull request analysis summary.
+
+Generate EXACTLY 13 to 15 lines. Each line must be a complete sentence in plain English.
+Start your response directly with the first line. Do NOT use headings, bullets, numbers, or markdown.
+Do NOT add any text before or after the 13-15 lines.
+
+Cover these topics across the lines:
+1. What file/language was analyzed — use the EXACT filename from the analysis data (the "filename" field). Never invent or substitute a different filename. If the data says the file is "LoginService.java", write "LoginService.java". Only use "pasted_code" if the "filename" field in the data is literally "pasted_code".
+2. Overall quality score meaning
+3. Overall security score meaning
+4. How many findings were found and severity breakdown
+5. Most important security finding and why it matters
+6. Most important quality finding and why it matters
+7. A second notable finding
+8. OWASP category relevance
+9. What to fix first
+10. Specific remediation for the top issue
+11. Code quality improvement recommendation
+12. Whether the code is ready to merge
+13. One concrete next step
+
+Analysis data:
+{analysis_data}

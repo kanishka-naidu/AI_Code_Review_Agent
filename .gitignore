@@ -1,0 +1,88 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+.env.*
+
+# Keep the example environment file
+!.env.example
+
+# ChromaDB
+**/chroma_db/
+
+# Backend generated files
+**/uploads/
+**/reports/
+
+# Frontend dependencies
+frontend/node_modules/
+
+# Frontend build files
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/out/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Local development / tool files
+.amazonq/
+pytest-output.txt
+tsc_check.txt
+
+# Vector database
+**/vector_db/
+
+# Generated test outputs
+**/*_output.txt
+**/*_run.txt
+**/*_check.txt
+**/*_results.txt
+
+# Generated reports and test artifacts
+backend/*.pdf
+backend/*.json
+
+# Local helper/fix scripts
+backend/fix_*.py
+
+# Local test output files
+**/analyze_test.txt
+**/api_test_output.txt
+**/e2e_output.txt
+**/pdf_check.txt
+**/pytest_run*.txt
+**/test_orch.txt
+**/test_results*.txt
+**/verify_orch.txt
+**/route-test.txt
+**/tsc_output*.txt
+**/tsconfig.tsbuildinfo
+
+# Local test files containing API credentials
+backend/test_google.py
+backend/test_model.py

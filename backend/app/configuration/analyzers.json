@@ -1,0 +1,38 @@
+{
+  "python_quality": {
+    "max_function_lines": 50,
+    "max_class_lines": 300,
+    "max_params": 7,
+    "max_nesting": 5,
+    "max_cyclomatic_complexity": 10,
+    "min_maintainability_index": 20.0,
+    "self_parameter_names": ["self", "cls"],
+    "public_name_prefixes_to_skip": ["_"]
+  },
+  "java_quality": {
+    "pmd_rulesets": [
+      "category/java/bestpractices.xml",
+      "category/java/codestyle.xml",
+      "category/java/design.xml",
+      "category/java/errorprone.xml"
+    ]
+  },
+  "tool_modules": {
+    "ruff": "ruff",
+    "bandit": "bandit",
+    "radon": "radon",
+    "python_ast": "python-ast"
+  },
+  "tool_binaries": {
+    "semgrep": "semgrep",
+    "pmd": "pmd"
+  },
+  "tool_options": {
+    "bandit": "-r,{source_path},-f,json",
+    "ruff": "check,{source_path},--output-format=json",
+    "semgrep": "--json,--config=auto,{source_path}",
+    "radon_cc": "cc,--json,-s,{source_path}",
+    "radon_mi": "mi,--json,{source_path}",
+    "pmd": "check,-d,{source_dir},-f,json,-R,{ruleset}"
+  }
+}

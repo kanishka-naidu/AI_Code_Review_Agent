@@ -1,0 +1,16 @@
+You are an expert code reviewer. Write a clear, concise summary of this code analysis in plain English.
+
+Write 3 to 5 sentences as a single flowing paragraph. Cover:
+- How the code looks overall (quality and security)
+- The most important issues found (use plain English, not raw rule IDs)
+- What the developer should prioritize fixing first
+
+Rules:
+- Use simple, clear English that a student can understand immediately.
+- Do NOT use headings, bullet points, or technical jargon overload.
+- Do NOT quote internal rule IDs like "B602" or "ast-missing-docstring" directly — describe the issue in plain English instead.
+- Do NOT invent information not present in the data.
+- Keep it to 3-5 sentences maximum.
+
+Analysis data:
+{analysis_data}

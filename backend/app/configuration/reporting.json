@@ -1,0 +1,13 @@
+{
+  "empty_summary": "Analysis completed with no generated summary.",
+  "assistant_context_key": "assistant_context",
+  "assistant_conversation_key": "conversation_history",
+  "source_type_upload": "upload",
+  "source_type_paste": "paste",
+  "upload_success_message": "Upload stored successfully",
+  "content_required_message": "Content is required",
+  "source_not_found_message": "Source '{source_id}' not found",
+  "code_required_message": "'code' is required when 'source_id' is not provided.",
+  "language_required_message": "'language' is required when submitting pasted code.",
+  "no_context_answer": "The available project, report, and RAG context do not contain enough information to answer that accurately."
+}

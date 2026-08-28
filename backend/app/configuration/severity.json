@@ -1,0 +1,62 @@
+{
+  "order_desc": ["critical", "high", "medium", "low", "info"],
+  "order_asc": ["info", "low", "medium", "high", "critical"],
+  "numeric_thresholds": [
+    {"threshold": 9, "severity": "critical"},
+    {"threshold": 7, "severity": "high"},
+    {"threshold": 4, "severity": "medium"},
+    {"threshold": 1, "severity": "low"},
+    {"threshold": 0, "severity": "info"}
+  ],
+  "string_map": {
+    "critical": "critical",
+    "error": "high",
+    "high": "high",
+    "warning": "medium",
+    "medium": "medium",
+    "low": "low",
+    "info": "info",
+    "note": "info",
+    "bandit_high": "high",
+    "bandit_medium": "medium",
+    "bandit_low": "low"
+  },
+  "bandit": {
+    "HIGH": "high",
+    "MEDIUM": "medium",
+    "LOW": "low"
+  },
+  "semgrep": {
+    "ERROR": "high",
+    "WARNING": "medium",
+    "INFO": "low"
+  },
+  "pmd_priority": {
+    "1": "critical",
+    "2": "high",
+    "3": "medium",
+    "4": "low",
+    "5": "info"
+  },
+  "ruff_prefix": {
+    "E": "high",
+    "C": "medium",
+    "N": "medium",
+    "D": "medium",
+    "default": "low"
+  },
+  "rule_overrides": {
+    "B105": "high",
+    "hardcoded_password_string": "high",
+    "B501": "high",
+    "B608": "high",
+    "B506": "high",
+    "B602": "high",
+    "B603": "high",
+    "B604": "high",
+    "B701": "high",
+    "B324": "medium",
+    "B110": "low",
+    "B112": "low"
+  }
+}

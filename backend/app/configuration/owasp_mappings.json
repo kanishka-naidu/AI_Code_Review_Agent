@@ -1,0 +1,17 @@
+{
+  "source_map": {
+    "sql_injection": "A03:2021 - Injection",
+    "xss": "A03:2021 - Injection",
+    "authentication": "A07:2021 - Identification and Authentication Failures",
+    "owasp_top10": "OWASP Top 10 - see https://owasp.org/Top10/"
+  },
+  "rule_patterns": [
+    {"tokens": ["b307", "b322", "b601", "b602", "b603", "eval", "exec", "shell"], "owasp": "A03:2021 - Injection"},
+    {"tokens": ["sql", "b608", "b609"], "owasp": "A03:2021 - Injection"},
+    {"tokens": ["xss", "cross-site", "cross_site"], "owasp": "A03:2021 - Injection"},
+    {"tokens": ["b301", "b302", "deserializ", "pickle", "yaml.load"], "owasp": "A08:2021 - Software and Data Integrity Failures"},
+    {"tokens": ["b101", "path", "traversal"], "owasp": "A01:2021 - Broken Access Control"},
+    {"tokens": ["b303", "b304", "b305", "b306", "md5", "sha1", "des", "rc4", "weak"], "owasp": "A02:2021 - Cryptographic Failures"},
+    {"tokens": ["b105", "b106", "b107", "b108", "password", "credential", "hardcoded"], "owasp": "A07:2021 - Identification and Authentication Failures"}
+  ]
+}
