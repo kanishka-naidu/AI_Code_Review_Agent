@@ -5,7 +5,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response
 
-from app.api.dependencies import get_analysis_service
 from app.api.routes import health, upload, analyze, assistant, reports, metrics
 from app.api.rate_limiter import InMemoryRateLimiter
 from app.api.rate_limiter_redis import TokenBucketRedisRateLimiter, RedisRateLimiter
@@ -155,7 +154,6 @@ try:
     @app.on_event("startup")
     async def _startup_checks():
         run_startup_checks()
-        get_analysis_service()
 
 except Exception as exc:
 

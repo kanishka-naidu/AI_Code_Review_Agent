@@ -6,6 +6,8 @@ Business logic lives in the orchestrator and its nodes — not here.
 """
 from __future__ import annotations
 
+import asyncio
+
 from app.agents.orchestrator import Orchestrator
 from app.core.logging import get_logger
 from app.core.config import get_settings
@@ -21,12 +23,19 @@ class AnalysisService:
 
     def __init__(self) -> None:
         logger.info("AnalysisService initialising Orchestrator")
-        self._orchestrator = Orchestrator()
-        # concurrency guard for orchestrations
+        self._orchestrator: Orchestrator | None = None
+        self._init_lock = asyncio.Lock()
         settings = get_settings()
-        import asyncio
-
         self._concurrency = asyncio.Semaphore(max(1, int(settings.orchestrator_concurrency_limit)))
+
+    async def _ensure_initialised(self) -> None:
+        if self._orchestrator is not None:
+            return
+        async with self._init_lock:
+            if self._orchestrator is None:
+                logger.info("AnalysisService: lazily creating Orchestrator")
+                self._orchestrator = Orchestrator()
+                logger.info("AnalysisService: Orchestrator ready")
 
     async def analyze_submission(self, submission: CodeSubmission) -> AnalysisReport:
         """
@@ -40,7 +49,8 @@ class AnalysisService:
             submission.language,
             submission.metadata.get("source_type", "unknown"),
         )
-        # Acquire concurrency semaphore to limit simultaneous pipeline runs
+        await self._ensure_initialised()
+        assert self._orchestrator is not None
         async with self._concurrency:
             report = await self._orchestrator.run(submission)
 
