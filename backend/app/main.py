@@ -1,7 +1,11 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response
 
+from app.api.dependencies import get_analysis_service
 from app.api.routes import health, upload, analyze, assistant, reports, metrics
 from app.api.rate_limiter import InMemoryRateLimiter
 from app.api.rate_limiter_redis import TokenBucketRedisRateLimiter, RedisRateLimiter
@@ -16,6 +20,45 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version
 )
+
+
+class ProductionCorsMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app):
+        super().__init__(app)
+        self.allowed_origins = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "https://ai-code-review-frontend-u2s6.onrender.com",
+        ]
+        self.allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+        self.allowed_headers = ["Accept", "Accept-Language", "Content-Language", "Content-Type"]
+
+    async def dispatch(self, request: StarletteRequest, call_next):
+        origin = request.headers.get("origin")
+
+        if origin and origin in self.allowed_origins:
+            if request.method == "OPTIONS" and "access-control-request-method" in request.headers:
+                return Response(
+                    status_code=204,
+                    headers={
+                        "access-control-allow-origin": origin,
+                        "access-control-allow-methods": ", ".join(self.allowed_methods),
+                        "access-control-allow-headers": ", ".join(self.allowed_headers),
+                        "access-control-allow-credentials": "true",
+                        "access-control-max-age": "600",
+                    },
+                )
+
+            response = await call_next(request)
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers.setdefault("Vary", "Origin")
+            return response
+
+        return await call_next(request)
+
+
+app.add_middleware(ProductionCorsMiddleware)
 
 
 # ==============================
@@ -44,7 +87,7 @@ ALLOWED_ORIGINS = [
 
 
 @app.exception_handler(Exception)
-async def _cors_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+async def _cors_exception_handler(request: StarletteRequest, exc: Exception) -> JSONResponse:
     origin = request.headers.get("origin")
     headers = {}
     if origin in ALLOWED_ORIGINS:
@@ -112,6 +155,7 @@ try:
     @app.on_event("startup")
     async def _startup_checks():
         run_startup_checks()
+        get_analysis_service()
 
 except Exception as exc:
 

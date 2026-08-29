@@ -364,7 +364,6 @@ class Orchestrator:
             self._rag = RAGAgent()
         except Exception as exc:
             logger.warning("RAGAgent unavailable at startup; RAG features will be disabled: %s", exc)
-            # Provide a minimal no-op fallback that preserves runtime behavior without RAG.
             class _NoopRAG:
                 async def enrich_findings_batch(self, findings):
                     return findings
@@ -375,10 +374,55 @@ class Orchestrator:
 
             self._rag = _NoopRAG()
 
-        self._remediation = RemediationAgent()
-        self._summary = SummaryAgent()
-        self._pr_summary = PRSummaryAgent()
-        self._assistant = AssistantAgent(rag_agent=self._rag)
+        try:
+            self._remediation = RemediationAgent()
+        except Exception as exc:
+            logger.warning("RemediationAgent unavailable at startup; using fallback: %s", exc)
+            class _NoopRemediation:
+                async def suggest(self, findings):
+                    return [f.remediation for f in findings]
+
+                async def enrich_missing_fields(self, findings):
+                    return findings
+
+                async def generate_report_recommendations(self, findings):
+                    return []
+
+            self._remediation = _NoopRemediation()
+
+        try:
+            self._summary = SummaryAgent()
+        except Exception as exc:
+            logger.warning("SummaryAgent unavailable at startup; using fallback: %s", exc)
+            class _NoopSummary:
+                async def summarize(self, report_dict):
+                    return ""
+
+            self._summary = _NoopSummary()
+
+        try:
+            self._pr_summary = PRSummaryAgent()
+        except Exception as exc:
+            logger.warning("PRSummaryAgent unavailable at startup; using fallback: %s", exc)
+            class _NoopPRSummary:
+                async def generate_pr_summary(self, report_dict):
+                    return ""
+
+            self._pr_summary = _NoopPRSummary()
+
+        try:
+            self._assistant = AssistantAgent(rag_agent=self._rag)
+        except Exception as exc:
+            logger.warning("AssistantAgent unavailable at startup; using fallback: %s", exc)
+            class _NoopAssistant:
+                def prepare_context(self, report_data, source_code=None):
+                    return {}
+
+                async def answer(self, query, context=None):
+                    reporting = get_repository_config().load("reporting.json")
+                    return str(reporting.get("no_context_answer")), []
+
+            self._assistant = _NoopAssistant()
 
         # Compiled LangGraph
         self._graph = self._build_graph()
