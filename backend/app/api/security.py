@@ -53,12 +53,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         base = self._merge_directives(base, "style-src", getattr(self._settings, "csp_additional_style_src", ""))
         base = self._merge_directives(base, "img-src", getattr(self._settings, "csp_additional_img_src", ""))
 
-        # If this is a docs route and debug is enabled and allowed in settings, allow https: for style/script/img
         path = request.url.path
-        if self._settings.debug and getattr(self._settings, "csp_allow_https_for_docs", False) and any(path.startswith(p) for p in self.DOCS_PATHS):
-            base = self._merge_directives(base, "script-src", "https:")
-            base = self._merge_directives(base, "style-src", "https:")
-            base = self._merge_directives(base, "img-src", "https: data:")
+        if any(path.startswith(p) for p in self.DOCS_PATHS):
+            base = self._merge_directives(base, "script-src", "https://cdn.jsdelivr.net")
+            base = self._merge_directives(base, "style-src", "https://cdn.jsdelivr.net")
+            base = self._merge_directives(base, "img-src", "https://cdn.jsdelivr.net data:")
         return base
 
     async def dispatch(self, request: Request, call_next):
