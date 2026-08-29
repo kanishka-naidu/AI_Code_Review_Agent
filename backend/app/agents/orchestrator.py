@@ -177,10 +177,13 @@ async def _node_rag_enrich(state: PipelineState, rag: RAGAgent) -> PipelineState
     # All findings get RAG enrichment — security and quality both benefit.
     # Batch the entire list in one call to minimise LLM quota consumption.
     logger.info("[orchestrator] node=rag_enrich: enriching %d findings", len(findings))
-    enriched = await rag.enrich_findings_batch(findings)
-
-    state["findings"] = enriched
-    logger.info("[orchestrator] node=rag_enrich finished enriched=%d", len(enriched))
+    try:
+        enriched = await rag.enrich_findings_batch(findings)
+        state["findings"] = enriched
+        logger.info("[orchestrator] node=rag_enrich finished enriched=%d", len(enriched))
+    except Exception as exc:
+        logger.warning("[orchestrator] RAG enrichment failed; continuing without RAG: %s", exc)
+        # Keep original findings unchanged
     return state
 
 
