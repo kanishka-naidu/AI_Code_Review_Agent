@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import asyncio
 from typing import Any, Optional
 
 
@@ -26,7 +27,26 @@ class RAGAgent:
         self._prompt_loader = get_prompt_loader()
         self._llm = llm or self._build_llm()
         self._client = self._build_chroma_client()
-        self._collection = self._get_or_seed_collection()
+        self._collection: Any = None
+        self._init_lock = asyncio.Lock()
+        self._init_error: Optional[Exception] = None
+
+    async def _ensure_collection(self) -> Any:
+        if self._collection is not None:
+            return self._collection
+        if self._init_error is not None:
+            raise self._init_error
+        async with self._init_lock:
+            if self._collection is None:
+                try:
+                    logger.info("RAGAgent: lazily initializing embedding model and collection")
+                    self._collection = self._get_or_seed_collection()
+                    logger.info("RAGAgent: embedding model and collection initialized")
+                except Exception as exc:
+                    logger.error("RAGAgent: failed to initialize embedding model/collection: %s", exc, exc_info=True)
+                    self._init_error = exc
+                    raise
+        return self._collection
 
     async def enrich_findings_batch(self, findings: list[Finding]) -> list[Finding]:
         """Enrich findings from RAG context and Gemini-generated JSON (async)."""
@@ -35,7 +55,7 @@ class RAGAgent:
         # Limit RAG enrichment to top 8 findings to reduce LLM calls and latency
         findings_to_enrich = findings[:8]
         remaining = findings[8:]
-        contexts = [self.retrieve_context(f"{f.rule_id} {f.title} {f.description}") for f in findings_to_enrich]
+        contexts = [await self.retrieve_context(f"{f.rule_id} {f.title} {f.description}") for f in findings_to_enrich]
         if self._llm is not None:
             try:
                 enriched = await self._batch_enrich_with_llm(findings_to_enrich, contexts)
@@ -51,7 +71,7 @@ class RAGAgent:
 
     async def answer(self, query: str, context: Optional[str] = None) -> tuple[str, list[str]]:
         """Answer a developer question using retrieved context and Gemini (async)."""
-        chunks, sources = self._retrieve(query)
+        chunks, sources = await self._retrieve(query)
         retrieved_context = "\n\n".join(chunks)
         if self._llm is None:
             reporting = self._repo_config.load("reporting.json")
@@ -64,9 +84,9 @@ class RAGAgent:
         )
         return await self._llm.agenerate(prompt, temperature=self._settings.llm_default_temperature, max_tokens=self._settings.llm_default_max_tokens), sources
 
-    def retrieve_context(self, query: str) -> dict[str, Any]:
+    async def retrieve_context(self, query: str) -> dict[str, Any]:
         """Return retrieved chunks and source names for a query."""
-        chunks, sources = self._retrieve(query)
+        chunks, sources = await self._retrieve(query)
         return {"chunks": chunks, "sources": sources}
 
     def _build_llm(self) -> BaseLLMClient | None:
@@ -378,12 +398,13 @@ class RAGAgent:
                 return source_map[source]
         return None
 
-    def _retrieve(self, query: str) -> tuple[list[str], list[str]]:
+    async def _retrieve(self, query: str) -> tuple[list[str], list[str]]:
         try:
-            count = self._collection.count()
+            collection = await self._ensure_collection()
+            count = collection.count()
             if count == 0:
                 return [], []
-            results = self._collection.query(query_texts=[query], n_results=min(self._settings.retrieval_count, count))
+            results = collection.query(query_texts=[query], n_results=min(self._settings.retrieval_count, count))
             docs = (results.get("documents") or [[]])[0]
             metas = (results.get("metadatas") or [[]])[0]
             sources = [metadata.get("source", self._settings.knowledge_base_dir) for metadata in metas]
