@@ -61,7 +61,7 @@ class AssistantAgent:
         context_text = json.dumps(analysis_context or {}, default=str, ensure_ascii=True)
         history_text = json.dumps(conversation_history or [], ensure_ascii=True)
         retrieval_query = f"{question}\n{context_text[:2000]}"
-        retrieved = self._rag.retrieve_context(retrieval_query)
+        retrieved = await self._rag.retrieve_context(retrieval_query)
         sources = retrieved.get("sources", [])
         retrieved_context = "\n\n".join(retrieved.get("chunks", []))
 

@@ -69,6 +69,7 @@ class PipelineState(TypedDict, total=False):
 # Node functions (pure, dependency-injected via closures)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _node_validate(state: PipelineState) -> PipelineState:
     logger.info("[orchestrator] node=validate started")
     submission = state["submission"]
