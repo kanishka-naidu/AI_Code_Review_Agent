@@ -5,7 +5,7 @@ import json
 import uuid
 from typing import Any, Optional
 
-from app.agents.rag_agent import RAGAgent
+from app.agents.rag_agent import RAGAgent, get_rag_agent
 from app.core.llm import BaseLLMClient, get_llm_client
 from app.core.logging import get_logger
 from app.core.repository_config import get_repository_config
@@ -21,7 +21,7 @@ class AssistantAgent:
         from app.core.config import get_settings
 
         self._settings = get_settings()
-        self._rag = rag_agent or RAGAgent()
+        self._rag = rag_agent or get_rag_agent()
         self._llm = llm or self._build_llm()
         self._prompt_loader = get_prompt_loader()
         self._reporting = get_repository_config().load("reporting.json")

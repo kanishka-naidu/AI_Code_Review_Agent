@@ -31,10 +31,11 @@ class Settings(BaseSettings):
     llm_model: str = Field(default="")
     llm_api_key: str = Field(default="")
     # LLM retry and concurrency tuning
-    llm_max_retries: int = Field(default=3)
-    llm_backoff_min_seconds: float = Field(default=1.0)
-    llm_backoff_max_seconds: float = Field(default=30.0)
-    llm_concurrency_limit: int = Field(default=4)
+    llm_max_retries: int = Field(default=2)
+    llm_backoff_min_seconds: float = Field(default=0.5)
+    llm_backoff_max_seconds: float = Field(default=10.0)
+    llm_timeout_seconds: float = Field(default=30.0)
+    llm_concurrency_limit: int = Field(default=2)
     # Default LLM generation tuning (override in .env)
     llm_default_temperature: float = Field(default=0.2)
     llm_default_max_tokens: int = Field(default=1200)
@@ -73,7 +74,7 @@ class Settings(BaseSettings):
     # Readiness policy: whether missing analyzers should mark service as Unready
     startup_fail_on_missing_analyzers: bool = Field(default=False)
     # Orchestrator concurrency limit (max simultaneous pipeline runs)
-    orchestrator_concurrency_limit: int = Field(default=4)
+    orchestrator_concurrency_limit: int = Field(default=2)
     # Analyzer failure policy: 'partial' (continue and return partial results) or 'strict' (fail the request)
     # Configure via .env ANALYZER_FAILURE_MODE=partial|strict
     analyzer_failure_mode: str = Field(default="partial")

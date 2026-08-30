@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections import OrderedDict
 from pathlib import Path
 
 from app.core.config import get_settings
 from app.models.report import AnalysisReport
 
-
-_REPORT_CACHE: dict[str, dict] = {}
+_REPORT_CACHE_MAX = 50
+_REPORT_CACHE: OrderedDict[str, dict] = OrderedDict()
 
 
 class ReportService:
@@ -41,12 +42,16 @@ class ReportService:
         )
 
         _REPORT_CACHE[report_id] = json.loads(json.dumps(payload, default=str))
+        _REPORT_CACHE.move_to_end(report_id)
+        while len(_REPORT_CACHE) > _REPORT_CACHE_MAX:
+            _REPORT_CACHE.popitem(last=False)
 
         return report_id
 
     @staticmethod
     def load(report_id: str) -> dict:
         if report_id in _REPORT_CACHE:
+            _REPORT_CACHE.move_to_end(report_id)
             return _REPORT_CACHE[report_id]
 
         settings = get_settings()
@@ -58,4 +63,7 @@ class ReportService:
 
         data = json.loads(report_file.read_text(encoding="utf-8"))
         _REPORT_CACHE[report_id] = data
+        _REPORT_CACHE.move_to_end(report_id)
+        while len(_REPORT_CACHE) > _REPORT_CACHE_MAX:
+            _REPORT_CACHE.popitem(last=False)
         return data

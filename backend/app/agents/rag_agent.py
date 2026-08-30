@@ -5,6 +5,7 @@ import hashlib
 import json
 import re
 import asyncio
+from functools import lru_cache
 from typing import Any, Optional
 
 
@@ -451,24 +452,25 @@ class RAGAgent:
         return chromadb.PersistentClient(path=str(db_path))
 
     def _get_or_seed_collection(self) -> Any:
-        # Import embedding helper lazily to avoid optional dependency import during tests
         try:
             from chromadb.utils import embedding_functions
         except Exception as exc:  # pragma: no cover - environment-specific
             logger.warning("chromadb embedding utilities are not available: %s", exc)
             raise
-        embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=self._settings.embedding_model
-        )
+        try:
+            embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name=self._settings.embedding_model
+            )
+        except MemoryError as exc:
+            logger.error("RAGAgent: failed to load embedding model due to memory constraints: %s", exc)
+            raise RuntimeError("Insufficient memory to load embedding model; RAG disabled") from exc
+        except Exception as exc:
+            logger.error("RAGAgent: failed to initialize embedding model: %s", exc, exc_info=True)
+            raise RuntimeError(f"Embedding model initialization failed: {exc}") from exc
         collection = self._client.get_or_create_collection(
             name=self._settings.rag_collection,
             embedding_function=embedding_function,
         )
-        # Always check for new/un-indexed knowledge-base files and ingest them.
-        # This ensures newly added reference files (e.g. python_security.md,
-        # java_security.md, secure_coding.md, deserialization.md) are loaded,
-        # chunked, embedded, and available for RAG retrieval without requiring
-        # a manual DB wipe.
         self._seed_collection(collection)
         return collection
 
@@ -530,3 +532,8 @@ class RAGAgent:
         if current:
             chunks.append(" ".join(current))
         return chunks
+
+
+@lru_cache(maxsize=1)
+def get_rag_agent() -> RAGAgent:
+    return RAGAgent()

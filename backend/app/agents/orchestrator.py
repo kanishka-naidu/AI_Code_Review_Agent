@@ -25,7 +25,7 @@ from langgraph.graph import END, StateGraph
 from app.agents.assistant_agent import AssistantAgent
 from app.agents.language_detection_agent import LanguageDetectionAgent
 from app.agents.pr_summary_agent import PRSummaryAgent
-from app.agents.rag_agent import RAGAgent
+from app.agents.rag_agent import RAGAgent, get_rag_agent
 from app.agents.remediation_agent import RemediationAgent
 from app.agents.summary_agent import SummaryAgent
 from app.agents.validation_agent import ValidationAgent
@@ -222,39 +222,35 @@ async def _node_parallel_post_rag(
         "findings": [f.model_dump() for f in findings],
     }
 
-    # Launch all three independent LLM stages concurrently
-    remediate_coro = _run_remediate(remediation, findings)
-    summarize_coro = summary.summarize(report_dict)
-    pr_summary_coro = pr_summary.generate_pr_summary(report_dict)
+    # Run LLM stages sequentially to reduce peak memory usage on constrained hosts.
+    remediation_results = None
+    try:
+        remediation_results = await _run_remediate(remediation, findings)
+    except Exception as exc:
+        logger.error("[orchestrator] remediation stage failed: %s", exc)
+        remediation_results = ([], [])
 
-    remediation_results, summary_text, pr_text = await asyncio.gather(
-        remediate_coro,
-        summarize_coro,
-        pr_summary_coro,
-        return_exceptions=True,
-    )
-
-    # Handle remediation result
-    if isinstance(remediation_results, Exception):
-        logger.error("[orchestrator] remediation stage failed: %s", remediation_results)
-        recommendations_result: list[str] = []
-        updated_findings = findings
-    else:
-        per_recs, recommendations_result = remediation_results
-        updated_findings = []
-        for i, f in enumerate(findings):
-            updates: dict[str, Any] = {}
-            if not f.remediation and i < len(per_recs) and per_recs[i]:
-                updates["remediation"] = per_recs[i]
-            updated_findings.append(f.model_copy(update=updates) if updates else f)
-
-    if isinstance(summary_text, Exception):
-        logger.error("[orchestrator] summary stage failed: %s", summary_text)
+    summary_text = ""
+    try:
+        summary_text = await summary.summarize(report_dict)
+    except Exception as exc:
+        logger.error("[orchestrator] summary stage failed: %s", exc)
         summary_text = ""
 
-    if isinstance(pr_text, Exception):
-        logger.error("[orchestrator] pr_summary stage failed: %s", pr_text)
+    pr_text = ""
+    try:
+        pr_text = await pr_summary.generate_pr_summary(report_dict)
+    except Exception as exc:
+        logger.error("[orchestrator] pr_summary stage failed: %s", exc)
         pr_text = ""
+
+    per_recs, recommendations_result = remediation_results
+    updated_findings = []
+    for i, f in enumerate(findings):
+        updates: dict[str, Any] = {}
+        if not f.remediation and i < len(per_recs) and per_recs[i]:
+            updates["remediation"] = per_recs[i]
+        updated_findings.append(f.model_copy(update=updates) if updates else f)
 
     state["findings"] = updated_findings
     state["recommendations"] = recommendations_result
@@ -364,19 +360,7 @@ class Orchestrator:
         }
 
         # Agent singletons
-        try:
-            self._rag = RAGAgent()
-        except Exception as exc:
-            logger.warning("RAGAgent unavailable at startup; RAG features will be disabled: %s", exc)
-            class _NoopRAG:
-                async def enrich_findings_batch(self, findings):
-                    return findings
-
-                async def answer(self, query, context=None):
-                    reporting = get_repository_config().load("reporting.json")
-                    return str(reporting.get("no_context_answer")), []
-
-            self._rag = _NoopRAG()
+        self._rag = get_rag_agent()
 
         try:
             self._remediation = RemediationAgent()

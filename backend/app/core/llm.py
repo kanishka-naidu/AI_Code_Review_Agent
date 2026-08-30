@@ -56,16 +56,15 @@ class LiteLLMGeminiClient(BaseLLMClient):
         settings = get_settings()
         self._model_name = model if "/" in model else f"{settings.llm_provider}/{model}"
         self._api_key = api_key
-        # Retry and concurrency configuration from Settings
-        self._max_retries = settings.llm_max_retries
-        self._backoff_min = settings.llm_backoff_min_seconds
-        self._backoff_max = settings.llm_backoff_max_seconds
-        self._concurrency_limit = max(1, settings.llm_concurrency_limit)
-        # Threading semaphore for sync generate and asyncio semaphore for async
+        self._max_retries = max(1, int(settings.llm_max_retries))
+        self._backoff_min = max(0.1, float(settings.llm_backoff_min_seconds))
+        self._backoff_max = max(1.0, float(settings.llm_backoff_max_seconds))
+        self._timeout_seconds = max(10, float(getattr(settings, "llm_timeout_seconds", 30)))
+        self._concurrency_limit = max(1, int(settings.llm_concurrency_limit))
         import threading
         self._sync_semaphore = threading.BoundedSemaphore(self._concurrency_limit)
         self._async_semaphore = asyncio.Semaphore(self._concurrency_limit)
-        logger.info("LiteLLMGeminiClient initialised with configured model '%s' (concurrency=%d retries=%d)", settings.llm_model, self._concurrency_limit, self._max_retries)
+        logger.info("LiteLLMGeminiClient initialised with configured model '%s' (concurrency=%d retries=%d timeout=%ds)", settings.llm_model, self._concurrency_limit, self._max_retries, int(self._timeout_seconds))
 
     def _is_retryable(self, err_str: str) -> bool:
         low = err_str.lower()
@@ -88,6 +87,7 @@ class LiteLLMGeminiClient(BaseLLMClient):
                 messages=[{"role": "user", "content": prompt}],
                 temperature=temperature,
                 max_tokens=max_tokens,
+                timeout=self._timeout_seconds,
             )
         except Exception as e:
             logger.error("LLM provider call failed: %s", e)
@@ -97,26 +97,20 @@ class LiteLLMGeminiClient(BaseLLMClient):
 
     def generate(self, prompt: str, *, temperature: float = 0.2, max_tokens: int = 2048) -> str:
         """Synchronous generation with tenacity-powered retry for transient LLM errors."""
-        # Build a tenacity retry predicate that re-tries only when the underlying
-        # exception message is considered transient by _is_retryable.
         retry_pred = retry_if_exception(lambda exc: self._is_retryable(str(exc)))
 
-        # before_sleep callback increments retry counter for observability
         def _before_sleep(retry_state):
             try:
                 metrics.llm_retries_total.labels(self._model_name).inc()
             except Exception:
-                # Never raise from metrics collection
                 logger.debug("Failed to increment llm_retries_total metric")
 
         @retry(retry=retry_pred, wait=wait_exponential_jitter(self._backoff_min, self._backoff_max), stop=stop_after_attempt(self._max_retries), before_sleep=_before_sleep)
         def _invoke():
             return self._call_provider(prompt, temperature, max_tokens)
 
-        # Respect sync concurrency limits
         self._sync_semaphore.acquire()
         start = time.time()
-        # increment request counter and gauge
         try:
             try:
                 metrics.llm_requests_total.labels(self._model_name).inc()
@@ -151,7 +145,13 @@ class LiteLLMGeminiClient(BaseLLMClient):
         """Async wrapper that runs the blocking generate in a threadpool and respects concurrency limits."""
         await self._async_semaphore.acquire()
         try:
-            return await asyncio.to_thread(self.generate, prompt, temperature=temperature, max_tokens=max_tokens)
+            return await asyncio.wait_for(
+                asyncio.to_thread(self.generate, prompt, temperature=temperature, max_tokens=max_tokens),
+                timeout=self._timeout_seconds + 5,
+            )
+        except asyncio.TimeoutError as exc:
+            logger.error("LLM generation timed out after %ds: %s", int(self._timeout_seconds + 5), exc)
+            raise RuntimeError("LLM generation timed out") from exc
         finally:
             self._async_semaphore.release()
 

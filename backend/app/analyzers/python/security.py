@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from typing import Any
 
@@ -19,8 +20,28 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.repository_config import get_repository_config
 from app.models.finding import Finding
+from app.models.severity import Severity
 
 logger = get_logger(__name__)
+
+_HARDCODED_SECRET_PATTERN = re.compile(
+    r"^(?P<assign>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*['\"](?P<value>.+?)['\"]\s*$",
+    re.MULTILINE,
+)
+
+_HARDCODED_SECRET_KEYWORDS = {
+    "api_key",
+    "apikey",
+    "secret_key",
+    "password",
+    "passwd",
+    "pwd",
+    "token",
+    "auth_token",
+    "access_token",
+    "private_key",
+    "client_secret",
+}
 
 
 class PythonSecurityAnalyzer(Analyzer):
@@ -40,8 +61,35 @@ class PythonSecurityAnalyzer(Analyzer):
         findings = self._run_bandit(temp_path)
         if len(source.strip().splitlines()) >= 30:
             findings += self._run_semgrep(temp_path)
+        findings += self._run_hardcoded_secret_detection(source)
         logger.info("PythonSecurityAnalyzer finished for '%s' with %d findings", filename, len(findings))
         return findings, {}
+
+    def _run_hardcoded_secret_detection(self, source: str) -> list[Finding]:
+        """Detect hardcoded secrets via simple assignment pattern matching."""
+        findings: list[Finding] = []
+        for line_number, line in enumerate(source.splitlines(), start=1):
+            stripped = line.strip()
+            match = _HARDCODED_SECRET_PATTERN.match(stripped)
+            if not match:
+                continue
+            key = match.group("assign").lower()
+            if key not in _HARDCODED_SECRET_KEYWORDS:
+                continue
+            findings.append(
+                build_finding(
+                    rule_id="hardcoded_secret",
+                    title=f"Hardcoded secret: {match.group('assign')}",
+                    description=f"Hardcoded secret detected in assignment to '{match.group('assign')}'.",
+                    severity=Severity.HIGH,
+                    category=str(self._analysis_config.get("security_category")),
+                    line=line_number,
+                    evidence=stripped,
+                    tool_source="python_security",
+                    finding_metadata={"key": match.group("assign")},
+                )
+            )
+        return findings
 
     def _run_bandit(self, temp_path: Any) -> list[Finding]:
         python = get_python_executable()
