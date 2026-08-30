@@ -14,7 +14,7 @@ class AnalyzeRequest(BaseModel):
     language: Optional[str] = None
     code: Optional[str] = None
     source_id: Optional[str] = None
-    include_rag: bool = True
+    include_rag: bool = False
 
 
 class AssistantRequest(BaseModel):
