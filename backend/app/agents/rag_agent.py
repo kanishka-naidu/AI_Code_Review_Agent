@@ -536,4 +536,19 @@ class RAGAgent:
 
 @lru_cache(maxsize=1)
 def get_rag_agent() -> RAGAgent:
-    return RAGAgent()
+    try:
+        return RAGAgent()
+    except Exception as exc:
+        logger.warning("RAGAgent unavailable; using fallback: %s", exc)
+        class _NoopRAG:
+            async def enrich_findings_batch(self, findings):
+                return findings
+
+            async def answer(self, query, context=None):
+                reporting = get_repository_config().load("reporting.json")
+                return str(reporting.get("no_context_answer")), []
+
+            async def retrieve_context(self, query):
+                return {"chunks": [], "sources": []}
+
+        return _NoopRAG()

@@ -5,7 +5,7 @@ import json
 import uuid
 from typing import Any, Optional
 
-from app.agents.rag_agent import RAGAgent, get_rag_agent
+from app.agents.rag_agent import RAGAgent, get_rag_agent, get_rag_agent
 from app.core.llm import BaseLLMClient, get_llm_client
 from app.core.logging import get_logger
 from app.core.repository_config import get_repository_config
@@ -21,10 +21,11 @@ class AssistantAgent:
         from app.core.config import get_settings
 
         self._settings = get_settings()
-        self._rag = rag_agent or get_rag_agent()
         self._llm = llm or self._build_llm()
         self._prompt_loader = get_prompt_loader()
         self._reporting = get_repository_config().load("reporting.json")
+        # RAGAgent is intentionally NOT instantiated here. It is obtained lazily
+        # inside answer() only when RAG is actually required.
 
     def prepare_context(self, report_data: dict[str, Any], source_code: str | None = None) -> dict[str, Any]:
         """Build compact assistant context from a report and optional source code."""
@@ -62,7 +63,8 @@ class AssistantAgent:
         history_text = json.dumps(conversation_history or [], ensure_ascii=True)
         retrieval_query = f"{question}\n{context_text[:2000]}"
         try:
-            retrieved = await self._rag.retrieve_context(retrieval_query)
+            rag = get_rag_agent()
+            retrieved = await rag.retrieve_context(retrieval_query)
         except Exception as exc:
             logger.warning("AssistantAgent: RAG retrieval failed; continuing without retrieved context: %s", exc)
             retrieved = {"chunks": [], "sources": []}

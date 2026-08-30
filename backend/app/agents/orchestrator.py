@@ -161,7 +161,7 @@ async def _node_analyze(
     return state
 
 
-async def _node_rag_enrich(state: PipelineState, rag: RAGAgent) -> PipelineState:
+async def _node_rag_enrich(state: PipelineState) -> PipelineState:
     logger.info("[orchestrator] node=rag_enrich started")
     findings = state.get("findings") or []
     submission = state["submission"]
@@ -174,8 +174,7 @@ async def _node_rag_enrich(state: PipelineState, rag: RAGAgent) -> PipelineState
         logger.info("[orchestrator] node=rag_enrich: no findings to enrich")
         return state
 
-    # All findings get RAG enrichment — security and quality both benefit.
-    # Batch the entire list in one call to minimise LLM quota consumption.
+    rag = get_rag_agent()
     logger.info("[orchestrator] node=rag_enrich: enriching %d findings", len(findings))
     try:
         enriched = await rag.enrich_findings_batch(findings)
@@ -183,7 +182,6 @@ async def _node_rag_enrich(state: PipelineState, rag: RAGAgent) -> PipelineState
         logger.info("[orchestrator] node=rag_enrich finished enriched=%d", len(enriched))
     except Exception as exc:
         logger.warning("[orchestrator] RAG enrichment failed; continuing without RAG: %s", exc)
-        # Keep original findings unchanged
     return state
 
 
@@ -360,7 +358,9 @@ class Orchestrator:
         }
 
         # Agent singletons
-        self._rag = get_rag_agent()
+        # RAGAgent is intentionally NOT instantiated here to keep the normal
+        # analysis path lightweight. It is obtained lazily only when RAG
+        # enrichment is actually required.
 
         try:
             self._remediation = RemediationAgent()
@@ -399,7 +399,7 @@ class Orchestrator:
             self._pr_summary = _NoopPRSummary()
 
         try:
-            self._assistant = AssistantAgent(rag_agent=self._rag)
+            self._assistant = AssistantAgent()
         except Exception as exc:
             logger.warning("AssistantAgent unavailable at startup; using fallback: %s", exc)
             class _NoopAssistant:
@@ -467,7 +467,6 @@ class Orchestrator:
         """Build and compile the LangGraph StateGraph."""
         # Capture singletons in closures — clean dependency injection
         analyzers = self._analyzers
-        rag = self._rag
         remediation = self._remediation
         summary = self._summary
         pr_summary = self._pr_summary
@@ -483,7 +482,7 @@ class Orchestrator:
             return await _node_analyze(s, analyzers)
 
         async def rag_enrich(s: PipelineState) -> PipelineState:
-            return await _node_rag_enrich(s, rag)
+            return await _node_rag_enrich(s)
 
         async def parallel_post_rag(s: PipelineState) -> PipelineState:
             return await _node_parallel_post_rag(s, remediation, summary, pr_summary)
