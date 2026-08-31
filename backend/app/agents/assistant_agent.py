@@ -61,15 +61,19 @@ class AssistantAgent:
         """Answer a free-form question grounded in available context (async)."""
         context_text = json.dumps(analysis_context or {}, default=str, ensure_ascii=True)
         history_text = json.dumps(conversation_history or [], ensure_ascii=True)
-        retrieval_query = f"{question}\n{context_text[:2000]}"
-        try:
-            rag = get_rag_agent()
-            retrieved = await rag.retrieve_context(retrieval_query)
-        except Exception as exc:
-            logger.warning("AssistantAgent: RAG retrieval failed; continuing without retrieved context: %s", exc)
-            retrieved = {"chunks": [], "sources": []}
-        sources = retrieved.get("sources", [])
-        retrieved_context = "\n\n".join(retrieved.get("chunks", []))
+
+        sources: list[str] = []
+        retrieved_context = ""
+        if analysis_context:
+            retrieval_query = f"{question}\n{context_text[:2000]}"
+            try:
+                rag = get_rag_agent()
+                retrieved = await rag.retrieve_context(retrieval_query)
+            except Exception as exc:
+                logger.warning("AssistantAgent: RAG retrieval failed; continuing without retrieved context: %s", exc)
+                retrieved = {"chunks": [], "sources": []}
+            sources = retrieved.get("sources", [])
+            retrieved_context = "\n\n".join(retrieved.get("chunks", []))
 
         if self._llm is None:
             return str(self._reporting.get("no_context_answer")), sources
