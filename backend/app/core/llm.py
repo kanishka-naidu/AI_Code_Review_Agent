@@ -70,6 +70,9 @@ class LiteLLMGeminiClient(BaseLLMClient):
         low = err_str.lower()
         if "429" in err_str or "resource_exhausted" in low or "rate" in low:
             return True
+        # Retry on 503 Service Unavailable and high demand errors
+        if "503" in err_str or "service_unavailable" in low or "high demand" in low:
+            return True
         return False
 
     def _call_provider(self, prompt: str, temperature: float, max_tokens: int) -> str:
