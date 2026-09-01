@@ -64,7 +64,7 @@ class AssistantAgent:
 
         sources: list[str] = []
         retrieved_context = ""
-        if analysis_context:
+        if analysis_context and self._settings.assistant_rag_enabled:
             retrieval_query = f"{question}\n{context_text[:2000]}"
             try:
                 rag = get_rag_agent()

@@ -1,4 +1,5 @@
 from functools import lru_cache
+import os
 from pathlib import Path
 
 from pydantic import Field, field_validator
@@ -75,6 +76,10 @@ class Settings(BaseSettings):
     startup_fail_on_missing_analyzers: bool = Field(default=False)
     # Orchestrator concurrency limit (max simultaneous pipeline runs)
     orchestrator_concurrency_limit: int = Field(default=2)
+    # AI Assistant RAG settings. When False, the assistant does NOT load the
+    # SentenceTransformer embedding model or ChromaDB, avoiding OOM on Render.
+    # The assistant still uses analysis_context directly in the prompt.
+    assistant_rag_enabled: bool = Field(default=False)
     # Analyzer failure policy: 'partial' (continue and return partial results) or 'strict' (fail the request)
     # Configure via .env ANALYZER_FAILURE_MODE=partial|strict
     analyzer_failure_mode: str = Field(default="partial")
@@ -146,6 +151,10 @@ class Settings(BaseSettings):
 
     @property
     def reports_path(self) -> Path:
+        # Use REPORTS_DIR env var if set (for Render persistent disk)
+        env_reports_dir = os.environ.get("REPORTS_DIR")
+        if env_reports_dir:
+            return Path(env_reports_dir)
         return self.base_dir / self.reports_dir
 
     @property
